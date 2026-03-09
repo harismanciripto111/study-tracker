@@ -1,0 +1,16 @@
+# Development Dockerfile — hot reload with ts-node-dev
+FROM node:20-alpine
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy prisma schema and generate client
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Source will be mounted as a volume
+EXPOSE 4000
+
+CMD ["npm", "run", "dev"]
