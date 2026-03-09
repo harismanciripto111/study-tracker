@@ -1,176 +1,166 @@
 'use client';
-
-import { useEffect, useState, useCallback } from 'react';
-import { progressApi, topicsApi } from '@/lib/api';
-import { ProgressLog, ProgressSummary, Topic } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/useToast';
+import { useState, useEffect } from 'react';
+import { TrendingUp, Clock, BookOpen, Calendar } from 'lucide-react';
 import PageWrapper from '@/components/layout/PageWrapper';
-import ProgressBar from '@/components/progress/ProgressBar';
-import ProgressChart from '@/components/progress/ProgressChart';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, BookOpen, Calendar, TrendingUp } from 'lucide-react';
+import ProgressChart from '@/components/progress/ProgressChart';
+import ProgressBar from '@/components/progress/ProgressBar';
+import { api } from '@/lib/api';
 
-interface ChartDataPoint {
+interface SessionSummary {
+  id: string;
+  topicTitle: string;
+  topicColor?: string;
+  duration: number;
   date: string;
-  minutes: number;
+  mood?: string;
+}
+
+interface ProgressStats {
+  totalMinutes: number;
+  totalSessions: number;
+  avgPerDay: number;
+  streak: number;
+  byTopic: { topicId: string; title: string; color?: string; minutes: number }[];
+  daily: { date: string; minutes: number }[];
 }
 
 export default function ProgressPage() {
-  useAuth();
-  const { toast } = useToast();
-
+  const [stats, setStats] = useState<ProgressStats | null>(null);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [summaries, setSummaries] = useState<ProgressSummary[]>([]);
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [totalMinutes, setTotalMinutes] = useState(0);
-  const [totalSessions, setTotalSessions] = useState(0);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [progressRes, topicsRes] = await Promise.all([
-        progressApi.list(),
-        topicsApi.list(),
-      ]);
-
-      const logs: ProgressLog[] = progressRes.data?.data ?? [];
-      const topics: Topic[] = topicsRes.data?.data ?? [];
-
-      const total = logs.reduce((sum, l) => sum + (l.duration ?? 0), 0);
-      setTotalMinutes(total);
-      setTotalSessions(logs.length);
-
-      const byTopic: Record<string, { totalMinutes: number; sessionCount: number; lastStudied?: string }> = {};
-      for (const log of logs) {
-        if (!byTopic[log.topicId]) byTopic[log.topicId] = { totalMinutes: 0, sessionCount: 0 };
-        byTopic[log.topicId].totalMinutes += log.duration ?? 0;
-        byTopic[log.topicId].sessionCount += 1;
-        const d = log.studiedAt ?? log.createdAt ?? '';
-        if (!byTopic[log.topicId].lastStudied || d > byTopic[log.topicId].lastStudied!) {
-          byTopic[log.topicId].lastStudied = d;
-        }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, sessionsRes] = await Promise.all([
+          api.get('/progress/stats'),
+          api.get('/sessions?limit=20&sort=date:desc'),
+        ]);
+        setStats(statsRes.data.data);
+        setSessions(sessionsRes.data.data || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
+    };
+    fetchData();
+  }, []);
 
-      const sums: ProgressSummary[] = topics.map((t) => ({
-        topicId: t.id,
-        topicTitle: t.title,
-        totalMinutes: byTopic[t.id]?.totalMinutes ?? 0,
-        sessionCount: byTopic[t.id]?.sessionCount ?? 0,
-        lastStudied: byTopic[t.id]?.lastStudied,
-      })).sort((a, b) => b.totalMinutes - a.totalMinutes);
+  const formatDuration = (min: number) => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return h > 0 ? `${h}j ${m}m` : `${m}m`;
+  };
 
-      setSummaries(sums);
-
-      const now = new Date();
-      const days: ChartDataPoint[] = [];
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const key = d.toISOString().split('T')[0];
-        const minutes = logs
-          .filter((l) => (l.studiedAt ?? '').startsWith(key))
-          .reduce((sum, l) => sum + (l.duration ?? 0), 0);
-        days.push({ date: key.slice(5), minutes });
-      }
-      setChartData(days);
-    } catch {
-      toast({ title: 'Gagal memuat progress', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const maxMinutes = summaries.length > 0 ? Math.max(...summaries.map((s) => s.totalMinutes), 1) : 1;
+  const maxTopicMinutes = stats?.byTopic[0]?.minutes || 1;
 
   return (
-    <PageWrapper
-      title="Progress Belajar"
-      description="Pantau kemajuan belajarmu dari waktu ke waktu"
-    >
+    <PageWrapper title="Progress Belajar" description="Pantau perkembangan belajarmu dari waktu ke waktu">
       {loading ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
           </div>
           <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-48 rounded-xl" />
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Stats Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
-              <CardContent className="flex items-center gap-4 pt-5">
-                <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{Math.floor(totalMinutes / 60)}j {totalMinutes % 60}m</p>
-                  <p className="text-xs text-gray-500">Total Waktu Belajar</p>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10"><Clock className="h-5 w-5 text-primary" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Belajar</p>
+                    <p className="text-2xl font-bold">{formatDuration(stats?.totalMinutes || 0)}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="flex items-center gap-4 pt-5">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{totalSessions}</p>
-                  <p className="text-xs text-gray-500">Total Sesi Belajar</p>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950"><BookOpen className="h-5 w-5 text-blue-600" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Sesi</p>
+                    <p className="text-2xl font-bold">{stats?.totalSessions || 0}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="flex items-center gap-4 pt-5">
-                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-purple-600" />
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-100 dark:bg-green-950"><TrendingUp className="h-5 w-5 text-green-600" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Rata-rata/Hari</p>
+                    <p className="text-2xl font-bold">{formatDuration(stats?.avgPerDay || 0)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{summaries.filter((s) => s.totalMinutes > 0).length}</p>
-                  <p className="text-xs text-gray-500">Topik Dipelajari</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-950"><Calendar className="h-5 w-5 text-orange-600" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Streak</p>
+                    <p className="text-2xl font-bold">{stats?.streak || 0} hari</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-indigo-500" />
-                <h2 className="font-semibold">Aktivitas 14 Hari Terakhir</h2>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ProgressChart data={chartData} />
-            </CardContent>
-          </Card>
+          {/* Chart */}
+          {stats?.daily && stats.daily.length > 0 && (
+            <ProgressChart data={stats.daily} title="Aktivitas Belajar 30 Hari Terakhir" />
+          )}
 
-          <Card>
-            <CardHeader className="pb-2">
-              <h2 className="font-semibold">Progress per Topik</h2>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              {summaries.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">Belum ada data progress.</p>
-              ) : (
-                summaries.map((s) => (
-                  <div key={s.topicId}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium">{s.topicTitle}</span>
-                      <span className="text-gray-400 text-xs">
-                        {Math.floor(s.totalMinutes / 60)}j {s.totalMinutes % 60}m &bull; {s.sessionCount} sesi
-                      </span>
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* By Topic */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Waktu per Topik</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {stats?.byTopic && stats.byTopic.length > 0 ? stats.byTopic.map(t => (
+                  <div key={t.topicId} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color || '#6366f1' }} />
+                        <span>{t.title}</span>
+                      </div>
+                      <span className="text-muted-foreground">{formatDuration(t.minutes)}</span>
                     </div>
-                    <ProgressBar value={(s.totalMinutes / maxMinutes) * 100} showLabel={false} size="md" />
+                    <ProgressBar value={t.minutes} max={maxTopicMinutes} size="sm" color={t.color} />
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+                )) : <p className="text-sm text-muted-foreground">Belum ada data</p>}
+              </CardContent>
+            </Card>
+
+            {/* Recent Sessions */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Sesi Terakhir</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {sessions.length > 0 ? sessions.slice(0, 8).map(s => (
+                  <div key={s.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.topicColor || '#6366f1' }} />
+                      <span className="font-medium">{s.topicTitle}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>{formatDuration(s.duration)}</span>
+                      <span>{new Date(s.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
+                    </div>
+                  </div>
+                )) : <p className="text-sm text-muted-foreground">Belum ada sesi</p>}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </PageWrapper>
