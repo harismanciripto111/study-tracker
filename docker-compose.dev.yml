@@ -9,7 +9,7 @@ services:
     ports:
       - "5432:5432"
 
-  # ─── API: hot-reload with ts-node-dev, mount source ─────────────────────────
+  # ─── API: hot-reload with ts-node-dev, mount source ─────────────────────
   api:
     build:
       context: .
@@ -30,7 +30,7 @@ services:
     ports:
       - "4000:4000"
 
-  # ─── Web: Next.js dev server with HMR ────────────────────────────────────────
+  # ─── Web: Next.js dev server with HMR ──────────────────────────────────
   web:
     build:
       context: .
@@ -47,7 +47,7 @@ services:
     ports:
       - "3000:3000"
 
-  # ─── Nginx not needed in dev (services run on host ports directly) ────────────
+  # ─── Nginx not needed in dev (services run on host ports directly) ──────────
   nginx:
     profiles:
       - prod
