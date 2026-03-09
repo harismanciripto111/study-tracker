@@ -1,30 +1,19 @@
-import jwt, { SignOptions, JwtPayload } from 'jsonwebtoken';
-import { config } from '../config';
+import jwt from 'jsonwebtoken';
 
-export interface TokenPayload {
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+export interface JwtPayload {
   userId: string;
   role: string;
 }
 
-/**
- * Generate a signed JWT token for a user.
- */
-export function generateToken(userId: string, role: string): string {
-  const payload: TokenPayload = { userId, role };
-  const options: SignOptions = {
-    expiresIn: (config.jwtExpiresIn as SignOptions['expiresIn']) ?? '7d',
-  };
-  return jwt.sign(payload, config.jwtSecret, options);
+export function signToken(payload: JwtPayload): string {
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+  } as jwt.SignOptions);
 }
 
-/**
- * Verify a JWT token and return its payload.
- * Throws JsonWebTokenError / TokenExpiredError on failure.
- */
-export function verifyToken(token: string): TokenPayload {
-  const decoded = jwt.verify(token, config.jwtSecret) as JwtPayload & TokenPayload;
-  return {
-    userId: decoded.userId,
-    role: decoded.role,
-  };
+export function verifyToken(token: string): JwtPayload {
+  return jwt.verify(token, JWT_SECRET) as JwtPayload;
 }
