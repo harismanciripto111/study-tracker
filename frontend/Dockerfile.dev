@@ -1,0 +1,11 @@
+# Development Dockerfile — Next.js dev server with HMR
+FROM node:20-alpine
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Source will be mounted as a volume
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
