@@ -2,19 +2,10 @@ import bcrypt from 'bcryptjs';
 
 const SALT_ROUNDS = 10;
 
-/**
- * Hash a plain-text password using bcrypt.
- */
-export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, SALT_ROUNDS);
+export async function hashPassword(plain: string): Promise<string> {
+  return bcrypt.hash(plain, SALT_ROUNDS);
 }
 
-/**
- * Compare a plain-text password against a bcrypt hash.
- */
-export async function comparePassword(
-  password: string,
-  hash: string,
-): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+export async function comparePassword(plain: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(plain, hash);
 }
