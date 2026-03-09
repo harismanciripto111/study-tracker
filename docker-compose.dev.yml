@@ -1,0 +1,53 @@
+version: '3.9'
+
+# Development override — use alongside docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # ─── PostgreSQL: expose port for local clients (TablePlus, psql, etc.) ──────
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # ─── API: hot-reload with ts-node-dev, mount source ─────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.dev
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+      - /app/node_modules
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-studytracker}:${POSTGRES_PASSWORD:-studytracker}@postgres:5432/${POSTGRES_DB:-study_tracker}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-not-for-production}
+      JWT_EXPIRES_IN: 7d
+      PORT: 4000
+      FRONTEND_URL: http://localhost:3000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "4000:4000"
+
+  # ─── Web: Next.js dev server with HMR ────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.dev
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    ports:
+      - "3000:3000"
+
+  # ─── Nginx not needed in dev (services run on host ports directly) ────────────
+  nginx:
+    profiles:
+      - prod
