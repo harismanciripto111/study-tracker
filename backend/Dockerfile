@@ -1,11 +1,11 @@
-# ─── Stage 1: Dependencies ────────────────────────────────────────────────────
+# ─── Stage 1: Dependencies ──────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
-# ─── Stage 2: Build ───────────────────────────────────────────────────────────
+# ─── Stage 2: Build ─────────────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS build
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN npx prisma generate
 # Compile TypeScript
 RUN npm run build
 
-# ─── Stage 3: Production runner ───────────────────────────────────────────────
+# ─── Stage 3: Production runner ────────────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 
