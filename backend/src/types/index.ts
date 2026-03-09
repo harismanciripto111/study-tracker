@@ -1,9 +1,9 @@
 import { Request } from 'express';
 
-// ─── User roles (aligned with Prisma enum) ────────────────────────────────────
+// ─── User roles (aligned with Prisma enum) ──────────────────────────────────────────────────────
 export type UserRole = 'USER' | 'ADMIN';
 
-// ─── Topic categories (aligned with Prisma enum) ──────────────────────────────
+// ─── Topic categories (aligned with Prisma enum) ────────────────────────────────────────────────
 export type TopicCategory =
   | 'CHEMISTRY'
   | 'ENGLISH'
@@ -13,7 +13,7 @@ export type TopicCategory =
   | 'HISTORY'
   | 'OTHER';
 
-// ─── Extends Express Request with authenticated user ──────────────────────────
+// ─── Extends Express Request with authenticated user ────────────────────────────────────────────
 export interface AuthRequest extends Request {
   user: {
     userId: string;
@@ -21,7 +21,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-// ─── Generic API response wrapper ─────────────────────────────────────────────
+// ─── Generic API response wrapper ─────────────────────────────────────────────────────────────────
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -30,7 +30,7 @@ export interface ApiResponse<T> {
   meta?: PaginationMeta;
 }
 
-// ─── Pagination ────────────────────────────────────────────────────────────────
+// ─── Pagination ───────────────────────────────────────────────────────────────────────────────
 export interface PaginationQuery {
   page?: number;
   limit?: number;
@@ -44,7 +44,7 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
-// ─── Domain types ──────────────────────────────────────────────────────────────
+// ─── Domain types ──────────────────────────────────────────────────────────────────────────────
 export interface UserPublic {
   id: string;
   email: string;
@@ -103,7 +103,7 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-// ─── Auth request/response shapes ─────────────────────────────────────────────
+// ─── Auth request/response shapes ──────────────────────────────────────────────────────────────
 export interface LoginRequest {
   email: string;
   password: string;
