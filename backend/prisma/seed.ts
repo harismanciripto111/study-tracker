@@ -8,7 +8,7 @@ const SALT_ROUNDS = 10;
 async function main() {
   console.log('Seeding database...');
 
-  // ─── Users ────────────────────────────────────────────────────────────────
+  // ─── Users ───────────────────────────────────────────────────────────────────────────────
   const adminPassword = await bcrypt.hash('admin123', SALT_ROUNDS);
   const userPassword = await bcrypt.hash('user123', SALT_ROUNDS);
 
@@ -36,7 +36,7 @@ async function main() {
 
   console.log(`Created users: ${admin.email}, ${user.email}`);
 
-  // ─── Topics ───────────────────────────────────────────────────────────────
+  // ─── Topics ─────────────────────────────────────────────────────────────────────────────
   const topicsData = [
     {
       name: 'Kimia Organik',
@@ -87,7 +87,7 @@ async function main() {
 
   console.log(`Created ${topics.length} topics`);
 
-  // ─── Quiz Questions (3 per topic) ─────────────────────────────────────────
+  // ─── Quiz Questions (3 per topic) ──────────────────────────────────────────────────────────────
   const quizData = [
     // Kimia Organik
     {
@@ -146,32 +146,32 @@ async function main() {
     // Kalkulus
     {
       topicId: topics[2].id,
-      question: 'Turunan dari f(x) = x³ adalah?',
-      options: ['3x', '3x²', 'x²', '2x³'],
+      question: 'Turunan dari f(x) = x\u00b3 adalah?',
+      options: ['3x', '3x\u00b2', 'x\u00b2', '2x\u00b3'],
       correctIndex: 1,
-      explanation: 'Menggunakan aturan pangkat: d/dx(xⁿ) = n·xⁿ⁻¹, sehingga d/dx(x³) = 3x².',
+      explanation: 'Menggunakan aturan pangkat: d/dx(x\u207f) = n\u00b7x\u207f\u207b\u00b9, sehingga d/dx(x\u00b3) = 3x\u00b2.',
     },
     {
       topicId: topics[2].id,
-      question: '∫2x dx = ?',
-      options: ['x + C', 'x² + C', '2x² + C', '2 + C'],
+      question: '\u222b2x dx = ?',
+      options: ['x + C', 'x\u00b2 + C', '2x\u00b2 + C', '2 + C'],
       correctIndex: 1,
-      explanation: '∫2x dx = 2·(x²/2) + C = x² + C.',
+      explanation: '\u222b2x dx = 2\u00b7(x\u00b2/2) + C = x\u00b2 + C.',
     },
     {
       topicId: topics[2].id,
-      question: 'Nilai lim(x→2) (x² - 4)/(x - 2) adalah?',
+      question: 'Nilai lim(x\u21922) (x\u00b2 - 4)/(x - 2) adalah?',
       options: ['0', '2', '4', 'Tidak ada'],
       correctIndex: 2,
-      explanation: 'Faktorkan: (x²-4)/(x-2) = (x+2)(x-2)/(x-2) = x+2. Saat x→2: 2+2 = 4.',
+      explanation: 'Faktorkan: (x\u00b2-4)/(x-2) = (x+2)(x-2)/(x-2) = x+2. Saat x\u21922: 2+2 = 4.',
     },
     // Fisika Dasar
     {
       topicId: topics[3].id,
       question: 'Hukum Newton II menyatakan bahwa F = ?',
-      options: ['m/a', 'm·v', 'm·a', 'v/t'],
+      options: ['m/a', 'm\u00b7v', 'm\u00b7a', 'v/t'],
       correctIndex: 2,
-      explanation: 'Hukum Newton II: gaya (F) = massa (m) × percepatan (a).',
+      explanation: 'Hukum Newton II: gaya (F) = massa (m) \u00d7 percepatan (a).',
     },
     {
       topicId: topics[3].id,
@@ -183,9 +183,9 @@ async function main() {
     {
       topicId: topics[3].id,
       question: 'Kecepatan cahaya dalam vakum adalah sekitar?',
-      options: ['3×10⁶ m/s', '3×10⁸ m/s', '3×10¹⁰ m/s', '3×10⁴ m/s'],
+      options: ['3\u00d710\u2076 m/s', '3\u00d710\u2078 m/s', '3\u00d710\u00b9\u2070 m/s', '3\u00d710\u2074 m/s'],
       correctIndex: 1,
-      explanation: 'Kecepatan cahaya c ≈ 3×10⁸ m/s (299,792,458 m/s).',
+      explanation: 'Kecepatan cahaya c \u2248 3\u00d710\u2078 m/s (299,792,458 m/s).',
     },
     // Biologi Sel
     {
@@ -225,13 +225,13 @@ async function main() {
 
   console.log(`Created ${quizCount} quiz questions`);
 
-  // ─── Sample Study Sessions ─────────────────────────────────────────────────
+  // ─── Sample Study Sessions ──────────────────────────────────────────────────────────────────────
   const now = new Date();
   const sessionsData = [
     {
       userId: user.id,
       topicId: topics[0].id,
-      startTime: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      startTime: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
       endTime: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000),
       durationMin: 90,
       notes: 'Review reaksi organik bab 1-3',
