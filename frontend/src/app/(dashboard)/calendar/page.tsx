@@ -1,142 +1,129 @@
 'use client';
-
-import { useEffect, useState, useCallback } from 'react';
-import { calendarApi } from '@/lib/api';
-import { CalendarEvent } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/useToast';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import PageWrapper from '@/components/layout/PageWrapper';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChevronLeft, ChevronRight, Clock, BookOpen } from 'lucide-react';
+import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const DAYS_OF_WEEK = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-];
+interface DaySession {
+  id: string;
+  topicTitle: string;
+  topicColor?: string;
+  duration: number;
+  startTime?: string;
+}
+
+interface CalendarDay {
+  date: string;
+  sessions: DaySession[];
+  totalMinutes: number;
+}
 
 export default function CalendarPage() {
-  useAuth();
-  const { toast } = useToast();
-
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarData, setCalendarData] = useState<Record<string, CalendarDay>>({});
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const fetchEvents = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await calendarApi.get(year, month);
-      setEvents(res.data?.data ?? []);
-    } catch {
-      toast({ title: 'Gagal memuat kalender', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  }, [year, month, toast]);
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
 
-  useEffect(() => { fetchEvents(); }, [fetchEvents]);
+  useEffect(() => {
+    const fetchCalendar = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get(`/sessions/calendar?year=${year}&month=${month + 1}`);
+        setCalendarData(res.data.data || {});
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCalendar();
+  }, [year, month]);
 
-  const prevMonth = () => {
-    if (month === 1) { setYear((y) => y - 1); setMonth(12); }
-    else setMonth((m) => m - 1);
-    setSelectedDate(null);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const blanks = Array(firstDayOfMonth).fill(null);
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const formatDateKey = (day: number) =>
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  const monthName = currentDate.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+
+  const getIntensity = (minutes: number) => {
+    if (minutes === 0) return '';
+    if (minutes < 30) return 'bg-primary/20';
+    if (minutes < 60) return 'bg-primary/40';
+    if (minutes < 120) return 'bg-primary/70';
+    return 'bg-primary';
   };
-  const nextMonth = () => {
-    if (month === 12) { setYear((y) => y + 1); setMonth(1); }
-    else setMonth((m) => m + 1);
-    setSelectedDate(null);
-  };
 
-  const firstDay = new Date(year, month - 1, 1).getDay();
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const cells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  const eventByDate = events.reduce<Record<string, CalendarEvent>>((acc, e) => {
-    acc[e.date] = e;
-    return acc;
-  }, {});
-
-  const toDateStr = (day: number) =>
-    `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const todayStr = now.toISOString().split('T')[0];
-  const selectedEvent = selectedDate ? eventByDate[selectedDate] : null;
+  const selectedSessions = selectedDay ? calendarData[selectedDay]?.sessions || [] : [];
+  const selectedTotal = selectedDay ? calendarData[selectedDay]?.totalMinutes || 0 : 0;
 
   return (
-    <PageWrapper
-      title="Kalender Belajar"
-      description="Lihat riwayat sesi belajarmu per tanggal"
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <PageWrapper title="Kalender Belajar" description="Lihat aktivitas belajarmu setiap hari">
+      <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader>
               <div className="flex items-center justify-between">
-                <Button variant="ghost" size="icon" onClick={prevMonth}>
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <h2 className="font-semibold">
-                  {MONTH_NAMES[month - 1]} {year}
-                </h2>
-                <Button variant="ghost" size="icon" onClick={nextMonth}>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                <CardTitle className="text-base capitalize">{monthName}</CardTitle>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="outline" className="h-8 w-8"
+                    onClick={() => setCurrentDate(new Date(year, month - 1, 1))}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="outline" className="h-8 w-8"
+                    onClick={() => setCurrentDate(new Date(year, month + 1, 1))}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Min','Sen','Sel','Rab','Kam','Jum','Sab'].map(d => (
+                  <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+                ))}
+              </div>
               {loading ? (
-                <Skeleton className="h-64 rounded-lg" />
+                <div className="grid grid-cols-7 gap-1">
+                  {[...Array(35)].map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}
+                </div>
               ) : (
-                <>
-                  <div className="grid grid-cols-7 mb-2">
-                    {DAYS_OF_WEEK.map((d) => (
-                      <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {cells.map((day, idx) => {
-                      if (!day) return <div key={idx} />;
-                      const dateStr = toDateStr(day);
-                      const event = eventByDate[dateStr];
-                      const isToday = dateStr === todayStr;
-                      const isSelected = dateStr === selectedDate;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => setSelectedDate(dateStr === selectedDate ? null : dateStr)}
-                          className={cn(
-                            'relative flex flex-col items-center justify-start py-1.5 rounded-lg text-sm transition-all min-h-[52px]',
-                            isSelected && 'bg-indigo-500 text-white',
-                            !isSelected && isToday && 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 font-bold',
-                            !isSelected && !isToday && 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300',
-                          )}
-                        >
-                          <span className="font-medium">{day}</span>
-                          {event && (
-                            <span className={cn('mt-0.5 w-1.5 h-1.5 rounded-full', isSelected ? 'bg-white' : 'bg-indigo-500')} />
-                          )}
-                          {event && (
-                            <span className={cn('text-[10px] leading-tight', isSelected ? 'text-indigo-100' : 'text-gray-400')}>
-                              {event.sessionCount}s
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
+                <div className="grid grid-cols-7 gap-1">
+                  {blanks.map((_, i) => <div key={`blank-${i}`} />)}
+                  {days.map(day => {
+                    const key = formatDateKey(day);
+                    const dayData = calendarData[key];
+                    const minutes = dayData?.totalMinutes || 0;
+                    const isToday = key === new Date().toISOString().split('T')[0];
+                    const isSelected = selectedDay === key;
+                    return (
+                      <button key={day} onClick={() => setSelectedDay(isSelected ? null : key)}
+                        className={cn(
+                          'relative h-10 rounded-lg text-sm font-medium transition-all hover:ring-2 hover:ring-primary/50',
+                          isToday && 'ring-2 ring-primary',
+                          isSelected && 'ring-2 ring-primary bg-primary/10',
+                          minutes > 0 && !isSelected && getIntensity(minutes),
+                          minutes > 0 && 'text-primary-foreground'
+                        )}>
+                        {day}
+                        {minutes > 0 && (
+                          <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-current opacity-70" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -144,52 +131,34 @@ export default function CalendarPage() {
 
         <div>
           <Card className="h-full">
-            <CardHeader className="pb-2">
-              <h3 className="font-semibold">
-                {selectedDate
-                  ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                  : 'Pilih tanggal'}
-              </h3>
+            <CardHeader>
+              <CardTitle className="text-base">
+                {selectedDay
+                  ? new Date(selectedDay + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })
+                  : 'Pilih Tanggal'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              {!selectedDate && (
-                <p className="text-sm text-gray-400">Klik tanggal pada kalender untuk melihat detail sesi.</p>
-              )}
-              {selectedDate && !selectedEvent && (
-                <p className="text-sm text-gray-400">Tidak ada sesi pada tanggal ini.</p>
-              )}
-              {selectedEvent && (
+              {!selectedDay ? (
+                <p className="text-sm text-muted-foreground">Klik tanggal pada kalender untuk melihat sesi belajar.</p>
+              ) : selectedSessions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Tidak ada sesi belajar pada hari ini.</p>
+              ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold">
-                        {Math.floor(selectedEvent.totalMinutes / 60)}j {selectedEvent.totalMinutes % 60}m
-                      </p>
-                      <p className="text-xs text-gray-400">Total waktu belajar</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                      <BookOpen className="w-4 h-4 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold">{selectedEvent.sessionCount}</p>
-                      <p className="text-xs text-gray-400">Sesi belajar</p>
-                    </div>
-                  </div>
-                  {selectedEvent.topics.length > 0 && (
-                    <div className="pt-2">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Topik dipelajari:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedEvent.topics.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
-                        ))}
+                  <p className="text-xs text-muted-foreground">Total: {Math.floor(selectedTotal/60)}j {selectedTotal%60}m</p>
+                  {selectedSessions.map(s => (
+                    <div key={s.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.topicColor || '#6366f1' }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{s.topicTitle}</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{s.duration} menit</span>
+                          {s.startTime && <span>• {s.startTime}</span>}
+                        </div>
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </CardContent>
