@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  # ─── PostgreSQL Database ───────────────────────────────────────────────────
+  # ─── PostgreSQL Database ─────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: study-tracker-db
@@ -15,13 +15,13 @@ services:
     networks:
       - study-tracker-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-studytracker}"]  
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-studytracker}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
 
-  # ─── Express/TypeScript API ────────────────────────────────────────────────
+  # ─── Express/TypeScript API ────────────────────────────────────────────
   api:
     build:
       context: .
@@ -50,7 +50,7 @@ services:
       retries: 3
       start_period: 20s
 
-  # ─── Next.js Frontend ──────────────────────────────────────────────────────
+  # ─── Next.js Frontend ──────────────────────────────────────────────
   web:
     build:
       context: .
@@ -70,7 +70,7 @@ services:
     networks:
       - study-tracker-net
 
-  # ─── Nginx Reverse Proxy ───────────────────────────────────────────────────
+  # ─── Nginx Reverse Proxy ─────────────────────────────────────────────
   nginx:
     image: nginx:1.25-alpine
     container_name: study-tracker-nginx
@@ -95,7 +95,7 @@ volumes:
   nginx_logs:
     driver: local
 
-# ─── Networks ─────────────────────────────────────────────────────────────────
+# ─── Networks ───────────────────────────────────────────────────────────────────
 networks:
   study-tracker-net:
     driver: bridge
