@@ -1,67 +1,55 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodSchema, ZodError } from 'zod';
-
-function formatZodErrors(err: ZodError) {
-  return err.flatten().fieldErrors;
-}
+import { AnyZodObject, ZodError } from 'zod';
 
 /**
- * Validate req.body against a Zod schema.
- * Returns 400 with field errors if validation fails.
+ * Express middleware factory that validates request body, query, and params
+ * against the provided Zod schema.
+ *
+ * Usage:
+ *   router.post('/login', validate(loginSchema), authController.login);
  */
-export function validateBody(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.body);
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        message: 'Validation error',
-        errors: formatZodErrors(result.error),
+export function validate(schema: AnyZodObject) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      await schema.parseAsync({
+        body: req.body,
+        query: req.query,
+        params: req.params,
       });
-      return;
+      next();
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: err.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(err);
     }
-    req.body = result.data;
-    next();
   };
 }
 
 /**
- * Validate req.query against a Zod schema.
- * Returns 400 with field errors if validation fails.
+ * Validates only req.body against the provided Zod schema.
+ * Slightly more concise for routes that don't use query/params.
  */
-export function validateQuery(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.query);
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        message: 'Query validation error',
-        errors: formatZodErrors(result.error),
-      });
-      return;
+export function validateBody(schema: AnyZodObject) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      req.body = await schema.parseAsync(req.body);
+      next();
+    } catch (err) {
+      if (err instanceof ZodError) {
+        res.status(400).json({
+          success: false,
+          message: 'Validation error',
+          errors: err.flatten().fieldErrors,
+        });
+        return;
+      }
+      next(err);
     }
-    // Assign parsed/coerced values back
-    req.query = result.data as Record<string, string>;
-    next();
-  };
-}
-
-/**
- * Validate req.params against a Zod schema.
- * Returns 400 with field errors if validation fails.
- */
-export function validateParams(schema: ZodSchema) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const result = schema.safeParse(req.params);
-    if (!result.success) {
-      res.status(400).json({
-        success: false,
-        message: 'Params validation error',
-        errors: formatZodErrors(result.error),
-      });
-      return;
-    }
-    req.params = result.data as Record<string, string>;
-    next();
   };
 }
